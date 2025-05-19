@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { MainActivity, ProjectInfo } from '../types';
+// @ts-ignore: No types for html2pdf.js
+import html2pdf from 'html2pdf.js';
 
 interface ProjectSummaryReportProps {
   projectInfo: ProjectInfo;
@@ -39,9 +41,9 @@ const ProjectSummaryReport: React.FC<ProjectSummaryReportProps> = ({
       return;
     }
     
-    const maxEndDay = Math.max(
+    const maxEndDay = Math.ceil(Math.max(
       ...allSubActivities.map(sub => sub.startDay + sub.duration - 1)
-    );
+    ));
     setMaxDays(maxEndDay);
     
     // Create array of days
@@ -54,16 +56,18 @@ const ProjectSummaryReport: React.FC<ProjectSummaryReportProps> = ({
       mainActivities.forEach(main => {
         main.subActivities.forEach(sub => {
           const startDay = sub.startDay;
-          const endDay = sub.startDay + sub.duration - 1;
+          const endDay = sub.startDay + sub.duration - (sub.duration < 1 ? sub.duration : 1);
           
-          if (day >= startDay && day <= endDay) {
+          // For fractional days, we check if this day is within the range
+          // If the activity ends with a fraction on this day, it still counts
+          if (day >= startDay && day <= Math.ceil(endDay)) {
             activitiesForDay.push({
               mainCode: main.code,
               mainName: main.name,
               subName: sub.name,
               duration: sub.duration,
               isStart: day === startDay,
-              isEnd: day === endDay
+              isEnd: day === Math.ceil(endDay)
             });
           }
         });
@@ -146,8 +150,28 @@ const ProjectSummaryReport: React.FC<ProjectSummaryReportProps> = ({
     return getDateFromDay(maxDays, projectInfo.startDate);
   };
 
+  // Helper function to format duration display
+  const formatDuration = (value: number): string => {
+    // Show whole numbers without decimal places, show fractions with up to 2 decimal places
+    return Number.isInteger(value) ? value.toString() : value.toFixed(2).replace(/\.00$/, '').replace(/(\.\d)0$/, '$1');
+  };
+
+  const handleExportPDF = () => {
+    const element = document.getElementById('print-summary');
+    if (element) {
+      const opt = {
+        margin:       [0.5, 0.5, 0.5, 0.5], // inches: top, left, bottom, right
+        filename:     'ProjectSummary.pdf',
+        image:        { type: 'jpeg', quality: 0.98 },
+        html2canvas:  { scale: 2, useCORS: true },
+        jsPDF:        { unit: 'in', format: 'letter', orientation: 'portrait' }
+      };
+      html2pdf().set(opt).from(element).save();
+    }
+  };
+
   return (
-    <div className="bg-white p-8 rounded-lg shadow-lg max-w-4xl mx-auto my-8 print:shadow-none print:my-0">
+    <div id="print-summary" className="bg-white p-8 rounded-lg shadow-lg max-w-4xl mx-auto my-8 print:shadow-none print:my-0">
       {/* Report Header */}
       <div className="mb-8 border-b pb-6">
         <div className="flex justify-between items-center mb-6">
@@ -158,6 +182,12 @@ const ProjectSummaryReport: React.FC<ProjectSummaryReportProps> = ({
               className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 print:hidden"
             >
               Print Report
+            </button>
+            <button 
+              onClick={handleExportPDF}
+              className="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 print:hidden"
+            >
+              Export as PDF
             </button>
             {onClose && (
               <button 
@@ -192,7 +222,7 @@ const ProjectSummaryReport: React.FC<ProjectSummaryReportProps> = ({
           </div>
           <div>
             <h3 className="text-sm font-medium text-gray-500">Total Working Days</h3>
-            <p className="text-lg font-medium">{maxDays} days</p>
+            <p className="text-lg font-medium">{formatDuration(maxDays)} days</p>
           </div>
         </div>
       </div>
@@ -220,41 +250,52 @@ const ProjectSummaryReport: React.FC<ProjectSummaryReportProps> = ({
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-200">
-                      {dailyActivity.activities.map((activity, idx) => (
-                        <tr key={`${dailyActivity.day}-${idx}`} className="hover:bg-gray-50">
-                          <td className="px-4 py-2 whitespace-nowrap text-sm">
-                            {activity.mainCode}
-                          </td>
-                          <td className="px-4 py-2 text-sm">
-                            <div className="font-medium">{activity.subName}</div>
-                            <div className="text-xs text-gray-500">{activity.mainName}</div>
-                          </td>
-                          <td className="px-4 py-2 whitespace-nowrap text-sm">
-                            {activity.isStart && activity.isEnd ? (
-                              <span className="px-2 py-1 bg-green-100 text-green-800 rounded-full text-xs">
-                                Starts & Ends
-                              </span>
-                            ) : activity.isStart ? (
-                              <span className="px-2 py-1 bg-blue-100 text-blue-800 rounded-full text-xs">
-                                Starts
-                              </span>
-                            ) : activity.isEnd ? (
-                              <span className="px-2 py-1 bg-purple-100 text-purple-800 rounded-full text-xs">
-                                Ends
-                              </span>
-                            ) : (
-                              <span className="px-2 py-1 bg-gray-100 text-gray-800 rounded-full text-xs">
-                                In Progress
-                              </span>
-                            )}
-                          </td>
-                          <td className="px-4 py-2 whitespace-nowrap text-sm">
-                            {activity.duration} day{activity.duration > 1 ? 's' : ''}
-                          </td>
-                        </tr>
-                      ))}
+                      {dailyActivity.activities.map((activity, idx) => {
+                        // Find the description from mainActivities
+                        const main = mainActivities.find(m => m.code === activity.mainCode);
+                        const sub = main?.subActivities.find(s => s.name === activity.subName);
+                        return (
+                          <tr key={`${dailyActivity.day}-${idx}`} className="hover:bg-gray-50">
+                            <td className="px-4 py-2 whitespace-nowrap text-sm">
+                              {activity.mainCode}
+                            </td>
+                            <td className="px-4 py-2 text-sm">
+                              <div className="font-medium">{activity.subName}</div>
+                              {sub?.description && (
+                                <div className="text-xs text-gray-500 italic">{sub.description}</div>
+                              )}
+                              <div className="text-xs text-gray-500">{activity.mainName}</div>
+                            </td>
+                            <td className="px-4 py-2 whitespace-nowrap text-sm">
+                              {activity.isStart && activity.isEnd ? (
+                                <span className="px-2 py-1 bg-green-100 text-green-800 rounded-full text-xs">
+                                  Starts & Ends
+                                </span>
+                              ) : activity.isStart ? (
+                                <span className="px-2 py-1 bg-blue-100 text-blue-800 rounded-full text-xs">
+                                  Starts
+                                </span>
+                              ) : activity.isEnd ? (
+                                <span className="px-2 py-1 bg-purple-100 text-purple-800 rounded-full text-xs">
+                                  Ends
+                                </span>
+                              ) : (
+                                <span className="px-2 py-1 bg-gray-100 text-gray-800 rounded-full text-xs">
+                                  In Progress
+                                </span>
+                              )}
+                            </td>
+                            <td className="px-4 py-2 whitespace-nowrap text-sm">
+                              {formatDuration(activity.duration)} {activity.duration === 1 ? 'day' : 'days'}
+                            </td>
+                          </tr>
+                        );
+                      })}
                     </tbody>
                   </table>
+                  <div className="mt-2 text-xs text-gray-500">
+                    Total activities for day {dailyActivity.day}: {dailyActivity.activities.length}
+                  </div>
                 </div>
               </div>
             ))}
@@ -273,4 +314,4 @@ const ProjectSummaryReport: React.FC<ProjectSummaryReportProps> = ({
   );
 };
 
-export default ProjectSummaryReport; 
+export default ProjectSummaryReport;

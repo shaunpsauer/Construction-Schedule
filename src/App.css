@@ -40,3 +40,59 @@
 .read-the-docs {
   color: #888;
 }
+
+@media print {
+  body * {
+    display: none !important;
+    visibility: hidden !important;
+  }
+  #print-summary, #print-summary * {
+    display: block !important;
+    visibility: visible !important;
+  }
+  #print-summary {
+    position: absolute !important;
+    left: 0;
+    top: 0;
+    width: 100vw;
+    background: white;
+    box-shadow: none !important;
+    z-index: 9999 !important;
+  }
+}
+
+@media print, screen {
+  #print-summary {
+    font-family: 'Arial', 'Roboto', sans-serif;
+    color: #222;
+  }
+  #print-summary h1, #print-summary h2, #print-summary h3 {
+    color: #1a237e;
+    margin-bottom: 0.5em;
+  }
+  #print-summary table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-bottom: 1em;
+  }
+  #print-summary th, #print-summary td {
+    border: 1px solid #bbb;
+    padding: 8px 10px;
+    font-size: 1rem;
+  }
+  #print-summary th {
+    background: #f5f5f5;
+    color: #333;
+    font-weight: bold;
+  }
+  #print-summary tr:nth-child(even) {
+    background: #fafafa;
+  }
+  #print-summary .text-xs {
+    font-size: 0.9em;
+    color: #666;
+  }
+  #print-summary .font-medium {
+    font-weight: 600;
+  }
+}

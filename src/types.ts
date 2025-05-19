@@ -10,6 +10,7 @@ export interface SubActivity {
   unit: string; // DAYS, SQFT, FEET, EACH, etc.
   startDay: number;
   duration: number;
+  description?: string;
 }
 
 export interface MainActivity {

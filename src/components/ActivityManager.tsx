@@ -19,6 +19,7 @@ const ActivityManager: React.FC<ActivityManagerProps> = ({
   const [editSPSI, setEditSPSI] = useState<SPSIActivity | null>(null);
   const [editStartDay, setEditStartDay] = useState(1);
   const [editDuration, setEditDuration] = useState(1);
+  const [description, setDescription] = useState('');
 
   // Filter sub-activities by selected main activity code
   const filteredSubActivities = selectedMainActivity
@@ -50,7 +51,8 @@ const ActivityManager: React.FC<ActivityManagerProps> = ({
       name: selectedSPSI.name,
       unit: 'DAYS',
       startDay,
-      duration
+      duration: parseFloat(duration.toString()),
+      description: description.trim() ? description : undefined
     };
     const newMainActivities = updatedActivities.map(m =>
       m.code === main!.code
@@ -61,6 +63,7 @@ const ActivityManager: React.FC<ActivityManagerProps> = ({
     setSelectedSPSI(null);
     setStartDay(1);
     setDuration(1);
+    setDescription('');
   };
 
   const handleDeleteSubActivity = (mainCode: string, subId: string) => {
@@ -100,7 +103,7 @@ const ActivityManager: React.FC<ActivityManagerProps> = ({
                   name: editSPSI.name,
                   unit: 'DAYS',
                   startDay: editStartDay,
-                  duration: editDuration
+                  duration: parseFloat(editDuration.toString()) // Convert to number in case it's a string
                 }
               : sub
           )
@@ -116,6 +119,12 @@ const ActivityManager: React.FC<ActivityManagerProps> = ({
   const handleCancelEdit = () => {
     setEditing(null);
     setEditSPSI(null);
+  };
+
+  // Helper function to format duration display
+  const formatDuration = (value: number): string => {
+    // Show whole numbers without decimal places, show fractions with up to 2 decimal places
+    return Number.isInteger(value) ? value.toString() : value.toFixed(2).replace(/\.00$/, '').replace(/(\.\d)0$/, '$1');
   };
 
   return (
@@ -176,12 +185,44 @@ const ActivityManager: React.FC<ActivityManagerProps> = ({
           <label className="block text-sm font-medium text-gray-700 mb-1">
             Duration (days)
           </label>
+          <div className="flex">
+            <input
+              type="number"
+              min="0"
+              step="0.25"
+              value={duration}
+              onChange={e => {
+                const val = e.target.value;
+                if (val === '') {
+                  setDuration(0);
+                } else {
+                  try {
+                    const parsed = parseFloat(val);
+                    if (!isNaN(parsed)) {
+                      setDuration(parsed);
+                    }
+                  } catch (err) {
+                    // Keep previous value on error
+                  }
+                }
+              }}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+          </div>
+          <span className="text-xs text-gray-500 mt-1 block">
+            Use 0.25 for quarter day, 0.5 for half day, etc.
+          </span>
+        </div>
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">
+            Description (optional)
+          </label>
           <input
-            type="number"
-            min="1"
-            value={duration}
-            onChange={e => setDuration(parseInt(e.target.value))}
+            type="text"
+            value={description}
+            onChange={e => setDescription(e.target.value)}
             className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+            placeholder="Add a brief description (optional)"
           />
         </div>
       </div>
@@ -243,9 +284,24 @@ const ActivityManager: React.FC<ActivityManagerProps> = ({
                           <td className="px-4 py-2 text-sm text-gray-900">
                             <input
                               type="number"
-                              min="1"
+                              min="0"
+                              step="0.25"
                               value={editDuration}
-                              onChange={e => setEditDuration(parseInt(e.target.value))}
+                              onChange={e => {
+                                const val = e.target.value;
+                                if (val === '') {
+                                  setEditDuration(0);
+                                } else {
+                                  try {
+                                    const parsed = parseFloat(val);
+                                    if (!isNaN(parsed)) {
+                                      setEditDuration(parsed);
+                                    }
+                                  } catch (err) {
+                                    // Keep previous value on error
+                                  }
+                                }
+                              }}
                               className="w-20 px-2 py-1 border border-gray-300 rounded-md"
                             />
                           </td>
@@ -269,7 +325,9 @@ const ActivityManager: React.FC<ActivityManagerProps> = ({
                         <>
                           <td className="px-4 py-2 text-sm text-gray-900">{sub.name}</td>
                           <td className="px-4 py-2 text-sm text-gray-900">Day {sub.startDay}</td>
-                          <td className="px-4 py-2 text-sm text-gray-900">{sub.duration} days</td>
+                          <td className="px-4 py-2 text-sm text-gray-900">
+                            {formatDuration(sub.duration)} {sub.duration === 1 ? 'day' : 'days'}
+                          </td>
                           <td className="px-4 py-2 text-sm text-gray-900 space-x-2">
                             <button
                               onClick={() => handleEditClick(main.code, sub)}
@@ -300,4 +358,4 @@ const ActivityManager: React.FC<ActivityManagerProps> = ({
   );
 };
 
-export default ActivityManager; 
+export default ActivityManager;

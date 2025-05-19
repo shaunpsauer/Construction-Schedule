@@ -27,9 +27,9 @@ const ProjectProgressTracker: React.FC<ProjectProgressProps> = ({
     if (!allSubActivities.length) return;
     
     // Calculate total project days
-    const maxEndDay = Math.max(
+    const maxEndDay = Math.ceil(Math.max(
       ...allSubActivities.map(sub => sub.startDay + sub.duration - 1)
-    );
+    ));
     
     // Find the last entered activity
     // Sort by ID in descending order (assuming most recent have higher IDs)
@@ -41,7 +41,7 @@ const ProjectProgressTracker: React.FC<ProjectProgressProps> = ({
     
     const lastActivity = sortedActivities[0];
     const lastActivityStart = lastActivity ? lastActivity.startDay : 0;
-    const lastActivityEnd = lastActivity ? lastActivity.startDay + lastActivity.duration - 1 : 0;
+    const lastActivityEnd = lastActivity ? Math.ceil(lastActivity.startDay + lastActivity.duration - 1) : 0;
     
     // Calculate current day based on start date
     const today = new Date();
@@ -98,6 +98,12 @@ const ProjectProgressTracker: React.FC<ProjectProgressProps> = ({
     });
   };
 
+  // Helper function to format duration display
+  const formatDuration = (value: number): string => {
+    // Show whole numbers without decimal places, show fractions with up to 2 decimal places
+    return Number.isInteger(value) ? value.toString() : value.toFixed(2).replace(/\.00$/, '').replace(/(\.\d)0$/, '$1');
+  };
+
   return (
     <div className="bg-white rounded-lg shadow-md p-6 mb-6">
       <h2 className="text-xl font-bold text-gray-800 mb-4">Project Progress</h2>
@@ -123,8 +129,19 @@ const ProjectProgressTracker: React.FC<ProjectProgressProps> = ({
           <div className="mb-4">
             <h3 className="text-sm font-medium text-gray-500 mb-1">Current Project Day</h3>
             <p className="font-medium">
-              Day {progressData.currentDay} of {progressData.totalDays} ({progressData.daysRemaining} days remaining)
+              Day {progressData.currentDay} of {formatDuration(progressData.totalDays)} ({formatDuration(progressData.daysRemaining)} days remaining)
             </p>
+          </div>
+          
+          <div className="mb-4">
+            <h3 className="text-sm font-medium text-gray-500 mb-1">Progress</h3>
+            <div className="w-full bg-gray-200 rounded-full h-2.5">
+              <div 
+                className="bg-blue-600 h-2.5 rounded-full" 
+                style={{ width: `${progressData.percentComplete}%` }}
+              ></div>
+            </div>
+            <p className="text-sm text-gray-600 mt-1">{progressData.percentComplete}% complete</p>
           </div>
         </div>
       </div>
@@ -132,4 +149,4 @@ const ProjectProgressTracker: React.FC<ProjectProgressProps> = ({
   );
 };
 
-export default ProjectProgressTracker; 
+export default ProjectProgressTracker;

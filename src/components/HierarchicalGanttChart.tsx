@@ -65,6 +65,12 @@ const HierarchicalGanttChart: React.FC<GanttChartProps> = ({ mainActivities, sta
     return colors[index % colors.length];
   };
 
+  // Helper function to format duration display
+  const formatDuration = (value: number): string => {
+    // Show whole numbers without decimal places, show fractions with up to 2 decimal places
+    return Number.isInteger(value) ? value.toString() : value.toFixed(2).replace(/\.00$/, '').replace(/(\.\d)0$/, '$1');
+  };
+
   return (
     <div className="border rounded-lg overflow-hidden">
       <div className="overflow-x-auto">
@@ -114,33 +120,50 @@ const HierarchicalGanttChart: React.FC<GanttChartProps> = ({ mainActivities, sta
               {main.subActivities.map((sub) => (
                 <div key={sub.id} className="flex border-b hover:bg-gray-50">
                   <div className="w-64 p-2 border-r sticky left-0 bg-white z-10 pl-8">
-                    {sub.name}
-                  </div>
-                  
-                  {/* Timeline cells */}
-                  {Array.from({ length: maxDays }).map((_, idx) => (
-                    <div 
-                      key={`sub-cell-${sub.id}-${idx+1}`} 
-                      className="w-12 border-r relative"
-                    >
-                      {/* Activity bar */}
-                      {idx+1 >= sub.startDay && idx+1 < sub.startDay + sub.duration && (
-                        <div 
-                          className={`absolute inset-0 flex items-center justify-center ${
-                            idx+1 === sub.startDay ? 'rounded-l-md' : ''
-                          } ${
-                            idx+1 === sub.startDay + sub.duration - 1 ? 'rounded-r-md' : ''
-                          } ${getMainActivityColor(mainIndex)} m-1`}
-                        >
-                          {idx+1 === sub.startDay && sub.duration > 1 && (
-                            <span className="text-xs text-white font-medium">
-                              {sub.duration}d
-                            </span>
-                          )}
-                        </div>
+                    <div className="flex flex-col">
+                      <span>{sub.name}</span>
+                      {sub.description && (
+                        <span className="text-xs text-gray-500 italic mt-1">{sub.description}</span>
                       )}
                     </div>
-                  ))}
+                  </div>
+                  {/* Timeline cells */}
+                  {Array.from({ length: maxDays }).map((_, idx) => {
+                    const dayNumber = idx + 1;
+                    const startDay = sub.startDay;
+                    const endDay = startDay + sub.duration - (sub.duration < 1 ? sub.duration : 1);
+                    const isPartOfActivity = dayNumber >= startDay && dayNumber <= Math.ceil(endDay);
+                    const isStartDay = dayNumber === startDay;
+                    const isEndDay = dayNumber === Math.ceil(endDay);
+                    const isFractionalEnd = !Number.isInteger(sub.duration) && isEndDay;
+                    return (
+                      <div 
+                        key={`sub-cell-${sub.id}-${dayNumber}`} 
+                        className="w-12 border-r relative"
+                      >
+                        {isPartOfActivity && (
+                          <div 
+                            className={`absolute inset-0 flex items-center justify-center ${
+                              isStartDay ? 'rounded-l-md' : ''
+                            } ${
+                              isEndDay ? 'rounded-r-md' : ''
+                            } ${getMainActivityColor(mainIndex)} m-1`}
+                            style={isFractionalEnd ? {
+                              width: `${((sub.duration % 1) * 100)}%`,
+                              right: '4px',
+                              left: 'auto'
+                            } : undefined}
+                          >
+                            {isStartDay && sub.duration > 0.5 && (
+                              <span className="text-xs text-white font-medium">
+                                {formatDuration(sub.duration)}d
+                              </span>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
                 </div>
               ))}
               
@@ -160,4 +183,4 @@ const HierarchicalGanttChart: React.FC<GanttChartProps> = ({ mainActivities, sta
   );
 };
 
-export default HierarchicalGanttChart; 
+export default HierarchicalGanttChart;
